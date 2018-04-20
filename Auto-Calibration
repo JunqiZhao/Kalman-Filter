@@ -1,0 +1,95 @@
+## identify the rotation axis (Revised gradient descending approach)
+#load packages
+library(stats)
+#load the measurement
+r=3000
+mydata=read.csv("axis and position identification expansion.csv",header=T,nrows=r)
+a1x=mydata$a1x
+a1y=mydata$a1y
+a1z=mydata$a1z
+a2x=mydata$a2x
+a2y=mydata$a2y
+a2z=mydata$a2z
+g1x=mydata$g1x
+g1y=mydata$g1y
+g1z=mydata$g1z
+g2x=mydata$g2x
+g2y=mydata$g2y
+g2z=mydata$g2z
+a1=cbind(a1x,a1y,a1z)
+a2=cbind(a2x,a2y,a2z)
+g1=cbind(g1x,g1y,g1z)
+g2=cbind(g2x,g2y,g2z)
+
+#package preparation
+library("numDeriv", lib.loc="D:/Software/R-3.4.1/library")
+library("MASS")
+#creating nested loop
+N=10#define the step-wise for calculating the axis 
+range=seq(from=1, to=r, by=N)
+initial=seq(from=0,to=pi,by=0.1)
+eresult=matrix(0, nrow = 1,ncol = length(range))
+j1opt=matrix(0,nrow = 3,ncol=length(initial)+1)
+j2opt=matrix(0,nrow = 3,ncol=length(initial)+1)
+j1xprocess=matrix(0,nrow = length(initial),ncol = length(range))
+j1yprocess=matrix(0,nrow = length(initial),ncol = length(range))
+j1zprocess=matrix(0,nrow = length(initial),ncol = length(range))
+j2xprocess=matrix(0,nrow = length(initial),ncol = length(range))
+j2yprocess=matrix(0,nrow = length(initial),ncol = length(range))
+j2zprocess=matrix(0,nrow = length(initial),ncol = length(range))
+for (j in initial){
+  xresult=matrix(j, nrow = 4,ncol = length(range)+1)
+for (k in range){
+  count=1+round(k/N,digit=0)
+  x=as.vector(xresult[,count]) #initial state
+  e1=matrix(0,N,1)
+  e2=matrix(0,N,1)
+  e=matrix(0,N,1)
+  efun=function(x,g1,g2,k,N){
+    for (i in 1:N) {
+      e1[i,1]=g1[i+k-1,1]*cos(x[1])*cos(x[3])+g1[i+k-1,2]*cos(x[1])*sin(x[3])+g1[i+k-1,3]*sin(x[1])
+      e2[i,1]=g2[i+k-1,1]*cos(x[2])*cos(x[4])+g2[i+k-1,2]*cos(x[2])*sin(x[4])+g2[i+k-1,3]*sin(x[2])
+      e[i,1]=sqrt((e1[i,1])^2)-sqrt((e2[i,1])^2)
+    }
+    v=as.vector(e)
+    return(v)
+  }
+  ##optimization process
+  #calcualte the Jacobian Matrix at current state
+  jac=jacobian(efun,x,g1=g1,g2=g2,k=k,N=N)
+  #calculate the jacobian matrix inverse
+  invjac=ginv(jac)
+  e=efun(x,g1,g2,k,N)
+  #update the next state with current state x
+  xresult[,count+1]=matrix(x,nrow = 4,ncol = 1)-invjac%*%matrix(e,nrow= N,ncol= 1)*(1/count)
+  eudist=sqrt(sum(e^2))
+  eresult[1,count]=eudist
+}
+j1=matrix(0,nrow = 3,ncol = length(range)+1)
+j2=matrix(0,nrow = 3,ncol = length(range)+1)
+j1[1,]=cos(xresult[1,])*cos(xresult[3,])
+j1[2,]=cos(xresult[1,])*sin(xresult[3,])
+j1[3,]=sin(xresult[1,])
+j2[1,]=cos(xresult[2,])*cos(xresult[4,])
+j2[2,]=cos(xresult[2,])*sin(xresult[4,])
+j2[3,]=sin(xresult[2,])
+#plot(eresult[1,])
+#plot(j1[1,])
+#plot(j1[2,])
+#plot(j1[3,])
+#plot(j2[1,])
+#plot(j2[2,])
+#plot(j2[3,])
+j1xprocess[j*10+1,1:300]=j1[1,1:300]
+j1yprocess[j*10+1,1:300]=j1[2,1:300]
+j1zprocess[j*10+1,1:300]=j1[3,1:300]
+j2xprocess[j*10+1,1:300]=j2[1,1:300]
+j2yprocess[j*10+1,1:300]=j2[2,1:300]
+j2zprocess[j*10+1,1:300]=j2[3,1:300]
+j1opt[,j*10+1]=c(mean(j1[1,250:300]),mean(j1[2,250:300]),mean(j1[3,250:300]))
+j2opt[,j*10+1]=c(mean(j2[1,250:300]),mean(j2[2,250:300]),mean(j2[3,250:300]))
+}
+jprocess=rbind(j1xprocess,j1yprocess,j1zprocess,j2xprocess,j2yprocess,j2zprocess)
+#boxplot(j1xprocess)
+#write.csv(jprocess, "test.csv")
+#plot(j1[1,])
